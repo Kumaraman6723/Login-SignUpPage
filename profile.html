@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile of User</title>
+    <!-- Load the Google Platform Library -->
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <!-- Specify your app's client ID -->
+    <meta
+      name="google-signin-client_id"
+      content="YOUR_CLIENT_ID.apps.googleusercontent.com"
+    />
+  </head>
+  <body>
+    <h1>Welcome to the profile page</h1>
+    <h2>Your full name is: <span id="name"></span></h2>
+    <p>Email: <span id="email"></span></p>
+    <p>Gender: <span id="gender"></span></p>
+    <p>Birthday: <span id="birthday"></span></p>
+    <img id="image" alt="Profile Image" />
+
+    <script>
+      function getParams() {
+        const params = new URLSearchParams(window.location.search);
+        const fragment = new URLSearchParams(window.location.hash.substring(1));
+        let paramObj = {};
+
+        for (let [key, value] of params.entries()) {
+          paramObj[key] = value;
+        }
+
+        for (let [key, value] of fragment.entries()) {
+          paramObj[key] = value;
+        }
+
+        return paramObj;
+      }
+
+      function storeAuthInfo(params) {
+        if (Object.keys(params).length > 0) {
+          localStorage.setItem("authinfo", JSON.stringify(params));
+          console.log("Auth info stored:", params);
+        } else {
+          console.log("No URL parameters to store.");
+        }
+      }
+
+      function loadAuthInfo() {
+        const info = JSON.parse(localStorage.getItem("authinfo"));
+        if (!info) {
+          console.error("No auth information found in localStorage.");
+          return null;
+        }
+        console.log("Auth info loaded:", info);
+        return info;
+      }
+
+      function fetchUserInfo(token) {
+        fetch(
+          `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+          .then((response) => response.json())
+          .then((userInfo) => {
+            console.log("User info fetched:", userInfo);
+            document.getElementById("name").textContent =
+              userInfo.name || "N/A";
+            document.getElementById("email").textContent =
+              userInfo.email || "N/A";
+            if (userInfo.picture) {
+              document.getElementById("image").src = userInfo.picture;
+            } else {
+              console.log("No profile picture found.");
+            }
+            fetchAdditionalUserInfo(token);
+          })
+          .catch((error) => {
+            console.error("Error fetching user info:", error);
+          });
+      }
+
+      function fetchAdditionalUserInfo(token) {
+        fetch(
+          `https://people.googleapis.com/v1/people/me?personFields=genders,birthdays`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Additional user info fetched:", data);
+            const genderElement = document.getElementById("gender");
+            const birthdayElement = document.getElementById("birthday");
+
+            if (data.genders && data.genders.length > 0) {
+              genderElement.textContent = data.genders[0].value || "N/A";
+            } else {
+              genderElement.textContent = "N/A";
+            }
+
+            if (data.birthdays && data.birthdays.length > 0) {
+              const birthday = data.birthdays[0].date;
+              birthdayElement.textContent =
+                `${birthday.year}-${birthday.month}-${birthday.day}` || "N/A";
+            } else {
+              birthdayElement.textContent = "N/A";
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching additional user info:", error);
+          });
+      }
+
+      function initGoogleAuth() {
+        gapi.load("auth2", function () {
+          gapi.auth2
+            .init({
+              client_id: "YOUR_CLIENT_ID.apps.googleusercontent.com",
+            })
+            .then(function () {
+              console.log("Google Auth initialized.");
+            });
+        });
+      }
+
+      function signOut() {
+        const auth2 = gapi.auth2.getAuthInstance();
+        if (auth2) {
+          auth2.signOut().then(function () {
+            console.log("User signed out.");
+            localStorage.removeItem("authinfo");
+            document.getElementById("name").textContent = "";
+            document.getElementById("email").textContent = "";
+            document.getElementById("gender").textContent = "";
+            document.getElementById("birthday").textContent = "";
+            document.getElementById("image").src = "";
+          });
+        } else {
+          console.error("Google Auth instance not found.");
+        }
+      }
+
+      window.onload = function () {
+        initGoogleAuth();
+
+        const params = getParams();
+        console.log("URL parameters:", params);
+        storeAuthInfo(params);
+        window.history.pushState({}, document.title, "/profile.html");
+
+        const authInfo = loadAuthInfo();
+        if (authInfo) {
+          console.log("Access token:", authInfo["access_token"]);
+          console.log("Expires in:", authInfo["expires_in"]);
+          fetchUserInfo(authInfo["access_token"]);
+        }
+      };
+    </script>
+  </body>
+</html>
