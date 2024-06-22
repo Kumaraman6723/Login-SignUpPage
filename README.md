@@ -47,4 +47,4 @@ Welcome to the Login-SignUpPage repository! This project showcases a demo web ap
 - [Google People API Documentation](https://console.cloud.google.com/apis/library/people.googleapis.com)
 - [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web)
 
-.
+
